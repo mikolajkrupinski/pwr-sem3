@@ -1,0 +1,218 @@
+1.
+CREATE DATABASE tp_enjoyers;
+
+CREATE TABLE Ludzie (
+    -> ludzie_id int unsigned NOT NULL AUTO_INCREMENT,
+    -> PESEL char(11) NOT NULL,
+    -> imie varchar(30) NOT NULL,
+    -> nazwisko varchar(30) NOT NULL,
+    -> data_urodzenia date NOT NULL,
+    -> plec enum ('K', 'M') NOT NULL,
+    -> PRIMARY KEY (ludzie_id) );
+
+CREATE TABLE Zawody (
+    -> zawod_id int unsigned NOT NULL AUTO_INCREMENT,
+    -> nazwa varchar(50) NOT NULL,
+    -> pensja_min float unsigned NOT NULL,
+    -> pensja_max float unsigned NOT NULL,
+    -> PRIMARY KEY (zawod_id) );
+ALTER TABLE Zawody ADD CHECK (pensja_min < pensja_max);
+
+ CREATE TABLE Pracownicy (
+    -> ludzie_id int unsigned NOT NULL,
+    -> zawod_id int unsigned NOT NULL,
+    -> pensja float unsigned,
+    -> FOREIGN KEY (ludzie_id) REFERENCES Ludzie(ludzie_id),
+    -> FOREIGN KEY (zawod_id) REFERENCES Zawody(zawod_id) );
+
+INSERT INTO Zawody (nazwa, pensja_min, pensja_max) VALUES ('polityk', 10000, 30000);
+itd.
+
+DELIMITER $$
+CREATE FUNCTION kontrol(pesel char(11)) RETURNS int DETERMINISTIC
+BEGIN
+
+DECLARE k, i, v, w int DEFAULT 0;
+WHILE (i<10) 
+DO
+    SET v=CAST(RIGHT(LEFT(pesel, (i+1)),1) AS int);
+    IF ((i%4) = 0)
+    THEN
+        SET w=1;
+    ELSEIF ((i%4) = 1) 
+    THEN
+        SET w=3;
+    ELSEIF ((i%4) = 2) 
+    THEN
+        SET w=7;
+    ELSE
+        SET w=9;
+    END IF;
+    SET k = k + v*w;
+    SET i = i +1;
+END WHILE;
+SET k = k % 10;
+SET i = (i - k);
+SET i = i % 10;
+RETURN i;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE FUNCTION czyPESELok(pesel char(11), data date, p char) RETURNS int DETERMINISTIC
+BEGIN
+
+DECLARE wynik int DEFAULT 0;
+DECLARE rok, miesiac, dzien int;
+DECLARE plec_cyfra int;
+DECLARE po2000 int DEFAULT 0;
+
+IF RIGHT(pesel, 1) <> (SELECT kontrol(pesel)) THEN
+	RETURN wynik;
+END IF;
+
+SET rok = CAST(LEFT(pesel, 2) AS int);
+SET miesiac = CAST(RIGHT(LEFT(pesel, 4), 2) AS int);
+SET dzien = CAST(RIGHT(LEFT(pesel, 6), 2) AS int);
+
+IF miesiac > 20 THEN
+	SET miesiac = miesiac - 20;
+	SET po2000 = 1;
+	IF rok + 2000 <> YEAR(data) OR miesiac <> MONTH(data) OR dzien <> DAY(data) THEN
+		RETURN wynik;
+	END IF;
+END IF;
+
+IF po2000 = 0 AND (rok + 1900 <> YEAR(data) OR miesiac <> MONTH(data) OR dzien <> DAY(data)) THEN
+	RETURN wynik;
+END IF;
+
+SET plec_cyfra = CAST(LEFT(RIGHT(pesel, 2), 1) AS int);
+IF (plec_cyfra % 2 = 0 AND p = 'M') OR (plec_cyfra % 2 = 1 AND p = 'K') THEN
+	RETURN wynik;
+END IF;
+
+SET wynik = 1;
+RETURN wynik;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE TRIGGER peselInsert BEFORE INSERT ON Ludzie FOR EACH ROW
+BEGIN
+
+IF (SELECT czyPESELok(NEW.pesel, NEW.data_urodzenia, NEW.plec)) <> 1 THEN
+	signal sqlstate '45000';
+END IF;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE TRIGGER peselUpdate BEFORE UPDATE ON Ludzie FOR EACH ROW
+BEGIN
+
+IF (SELECT czyPESELok(NEW.pesel, NEW.data_urodzenia, NEW.plec)) <> 1
+THEN
+	signal sqlstate '45000';
+END IF;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE PROCEDURE stworzPracownikow() BEGIN
+DECLARE done INT DEFAULT FALSE;
+DECLARE id, z, pmin, pmax, pens, wiek INT;
+DECLARE d DATE;
+DECLARE p CHAR;
+DECLARE czlowiek CURSOR FOR
+(SELECT ludzie_id, data_urodzenia, plec FROM Ludzie);
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+OPEN czlowiek;
+
+dodaj: LOOP
+	FETCH czlowiek INTO id, d, p;
+	IF done THEN
+		LEAVE dodaj;
+	END IF;
+	SET wiek = TIMESTAMPDIFF(YEAR, d, CURDATE());
+	IF (P='K' AND wiek > 60) OR (P='M' AND wiek > 65) THEN
+		SELECT zawod_id, pensja_min, pensja_max INTO z, pmin, pmax FROM Zawody WHERE zawod_id != 3 ORDER BY RAND() LIMIT 1;
+		SET pens = FLOOR(pmin + RAND() * (pmax-pmin+1));
+		INSERT INTO Pracownicy VALUES (id, z, pens);
+	ELSE
+		IF wiek > 18 THEN
+			SELECT zawod_id, pensja_min, pensja_max INTO z, pmin, pmax FROM Zawody ORDER BY RAND() LIMIT 1;
+			SET pens = FLOOR(pmin + RAND() * (pmax-pmin+1));
+			INSERT INTO Pracownicy VALUES (id, z, pens);
+		END IF;
+	END IF;
+END LOOP;
+END $$
+DELIMITER ;
+
+CALL stworzPracownikow();
+
+
+2.
+CREATE INDEX my_ludzie_index ON Ludzie(plec, imie);
+CREATE INDEX my_pracownicy_index ON Pracownicy(pensja);
+
+SHOW INDEX FROM tabela; <- pokazuje indeksy na danej tabeli
+EXPLAIN SELECT ... <- pokazuje, jaki indeks jest wykorzystywany przy wykonywaniu kwerendy
+
+SELECT * FROM Ludzie WHERE plec = 'K' AND imie LIKE 'A%'; (*)
+SELECT * FROM Ludzie WHERE plec = 'K';
+SELECT * FROM Ludzie WHERE imie LIKE 'K%';
+SELECT * FROM Ludzie L JOIN Pracownicy P ON L.ludzie_id = P.ludzie_id WHERE pensja < 2000; (*)
+SELECT * FROM Ludzie L JOIN Pracownicy P ON L.ludzie_id = P.ludzie_id JOIN Zawody Z ON Z.zawod_id = P.zawod_id
+	WHERE Z.nazwa = 'informatyk' AND P.pensja > 10000; (*)
+
+Optymalizator używa stworzonych indeksów w trzech kwerendach oznaczonych (*).
+
+3.
+DELIMITER $$
+CREATE PROCEDURE Podwyzka(n varchar(50)) BEGIN
+
+DECLARE count int;
+DECLARE z_id int;
+
+IF NOT EXISTS(SELECT * FROM Zawody Z JOIN Pracownicy P ON Z.zawod_id = P.zawod_id WHERE Z.nazwa = n AND P.pensja * 1.05 > Z.pensja_max) THEN
+	SET z_id = (SELECT zawod_id FROM Zawody WHERE nazwa = n);
+	UPDATE Pracownicy SET pensja = 1.05 * pensja WHERE zawod_id = z_id;
+END IF;
+
+END$$
+DELIMITER ;
+
+CALL Podwyzka('informatyk');
+
+4.
+PREPARE kobiety_w_zawodzie FROM 'SELECT COUNT(*) FROM Pracownicy P JOIN Ludzie L ON L.ludzie_id = P.ludzie_id JOIN Zawody Z ON Z.zawod_id = P.zawod_id WHERE Z.nazwa = ?';
+EXECUTE kobiety_w_zawodzie USING 'informatyk';
+
+5.
+mysqldump -u root -p tp_enjoyers > tp_enjoyers.sql
+DROP DATABASE tp_enjoyers;
+CREATE DATABASE tp_enjoyers;
+mysql -u root -p[moje_hasło] tp_enjoyers < tp_enjoyers.sql
+
+6.
+Introduction:
+SELECT department FROM Employees WHERE first_name = 'Bob' AND last_name = 'Franco';
+UPDATE Employees SET department = 'Sales' WHERE first_name = 'Tobi' AND last_name = 'Barnett';
+ALTER TABLE employees ADD COLUMN phone varchar(20);
+GRANT ALL ON grant_rights TO unauthorized_user;
+SELECT * FROM user_data WHERE first_name = 'John' and last_name = 'Smith' or '1' = '1';
+SELECT * From user_data WHERE Login_Count = 0 and userid= TRUE;
+
+Employee Name: Smith' or '1' = '1
+Authentication TAN: 3SL99A' or '1' = '1
+
+Employee Name: Smith
+Authentication TAN: 3SL99A';update employees set salary = 100000 where auth_tan='3SL99A'--
+
+'; drop table access_log;--

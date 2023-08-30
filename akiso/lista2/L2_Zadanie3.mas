@@ -1,0 +1,34 @@
+﻿Input
+Store x
+Input
+Store y
+
+JnS end				/jump to do_while
+
+Load result				/end of the script
+Output
+Load x
+Output
+Halt
+
+end,	DEC	0
+
+cond,		Load x
+		Subt y
+        	Skipcond 000	/if (x < y) -> end
+        	Jump while
+        	JumpI end
+
+while,	Load x			/x = x - y
+		Subt y
+        	Store x
+        	Load result
+        	Add ONE
+        	Store result	/result++
+        	Jump cond
+        	Jump while
+        
+x,		DEC 0
+y,		DEC	0
+result,	DEC 0
+ONE, 		DEC 1

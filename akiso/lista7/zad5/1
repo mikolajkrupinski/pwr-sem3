@@ -1,0 +1,113 @@
+
+./test:     file format elf32-i386
+
+
+Disassembly of section .text:
+
+08049000 <_start>:
+ 8049000:	b8 00 a0 04 08       	mov    eax,0x804a000
+
+08049005 <end>:
+ 8049005:	b8 01 00 00 00       	mov    eax,0x1
+ 804900a:	bb 00 00 00 00       	mov    ebx,0x0
+ 804900f:	cd 80                	int    0x80
+
+Disassembly of section .data:
+
+0804a000 <mes>:
+ 804a000:	48                   	dec    eax
+ 804a001:	65 6c                	gs ins BYTE PTR es:[edi],dx
+ 804a003:	6c                   	ins    BYTE PTR es:[edi],dx
+ 804a004:	6f                   	outs   dx,DWORD PTR ds:[esi]
+ 804a005:	2c 20                	sub    al,0x20
+ 804a007:	57                   	push   edi
+ 804a008:	6f                   	outs   dx,DWORD PTR ds:[esi]
+ 804a009:	72 6c                	jb     804a077 <__bss_start+0x67>
+ 804a00b:	64 0a 00             	or     al,BYTE PTR fs:[eax]
+	...
+
+Disassembly of section .debug_aranges:
+
+00000000 <.debug_aranges>:
+   0:	1c 00                	sbb    al,0x0
+   2:	00 00                	add    BYTE PTR [eax],al
+   4:	02 00                	add    al,BYTE PTR [eax]
+   6:	00 00                	add    BYTE PTR [eax],al
+   8:	00 00                	add    BYTE PTR [eax],al
+   a:	04 00                	add    al,0x0
+   c:	00 00                	add    BYTE PTR [eax],al
+   e:	00 00                	add    BYTE PTR [eax],al
+  10:	00 90 04 08 11 00    	add    BYTE PTR [eax+0x110804],dl
+	...
+
+Disassembly of section .debug_info:
+
+00000000 <.debug_info>:
+   0:	36 00 00             	add    BYTE PTR ss:[eax],al
+   3:	00 02                	add    BYTE PTR [edx],al
+   5:	00 00                	add    BYTE PTR [eax],al
+   7:	00 00                	add    BYTE PTR [eax],al
+   9:	00 04 01             	add    BYTE PTR [ecx+eax*1],al
+   c:	00 90 04 08 11 90    	add    BYTE PTR [eax-0x6feef7fc],dl
+  12:	04 08                	add    al,0x8
+  14:	00 00                	add    BYTE PTR [eax],al
+  16:	00 00                	add    BYTE PTR [eax],al
+  18:	74 65                	je     7f <_start-0x8048f81>
+  1a:	73 74                	jae    90 <_start-0x8048f70>
+  1c:	2e 61                	cs popa
+  1e:	73 6d                	jae    8d <_start-0x8048f73>
+  20:	00 4e 41             	add    BYTE PTR [esi+0x41],cl
+  23:	53                   	push   ebx
+  24:	4d                   	dec    ebp
+  25:	20 32                	and    BYTE PTR [edx],dh
+  27:	2e 31 35 2e 30 35 00 	xor    DWORD PTR cs:0x35302e,esi
+  2e:	01 80 02 00 90 04    	add    DWORD PTR [eax+0x4900002],eax
+  34:	08 00                	or     BYTE PTR [eax],al
+  36:	00 00                	add    BYTE PTR [eax],al
+	...
+
+Disassembly of section .debug_abbrev:
+
+00000000 <.debug_abbrev>:
+   0:	01 11                	add    DWORD PTR [ecx],edx
+   2:	01 11                	add    DWORD PTR [ecx],edx
+   4:	01 12                	add    DWORD PTR [edx],edx
+   6:	01 10                	add    DWORD PTR [eax],edx
+   8:	06                   	push   es
+   9:	03 08                	add    ecx,DWORD PTR [eax]
+   b:	25 08 13 05 00       	and    eax,0x51308
+  10:	00 02                	add    BYTE PTR [edx],al
+  12:	2e 00 11             	add    BYTE PTR cs:[ecx],dl
+  15:	01 40 06             	add    DWORD PTR [eax+0x6],eax
+  18:	00 00                	add    BYTE PTR [eax],al
+	...
+
+Disassembly of section .debug_line:
+
+00000000 <.debug_line>:
+   0:	35 00 00 00 02       	xor    eax,0x2000000
+   5:	00 1f                	add    BYTE PTR [edi],bl
+   7:	00 00                	add    BYTE PTR [eax],al
+   9:	00 01                	add    BYTE PTR [ecx],al
+   b:	01 fb                	add    ebx,edi
+   d:	0e                   	push   cs
+   e:	0d 00 01 01 01       	or     eax,0x1010100
+  13:	01 00                	add    DWORD PTR [eax],eax
+  15:	00 00                	add    BYTE PTR [eax],al
+  17:	01 00                	add    DWORD PTR [eax],eax
+  19:	00 01                	add    BYTE PTR [ecx],al
+  1b:	00 74 65 73          	add    BYTE PTR [ebp+eiz*2+0x73],dh
+  1f:	74 2e                	je     4f <_start-0x8048fb1>
+  21:	61                   	popa
+  22:	73 6d                	jae    91 <_start-0x8048f6f>
+  24:	00 00                	add    BYTE PTR [eax],al
+  26:	00 00                	add    BYTE PTR [eax],al
+  28:	00 00                	add    BYTE PTR [eax],al
+  2a:	05 02 00 90 04       	add    eax,0x4900002
+  2f:	08 18                	or     BYTE PTR [eax],bl
+  31:	5b                   	pop    ebx
+  32:	59                   	pop    ecx
+  33:	59                   	pop    ecx
+  34:	02 02                	add    al,BYTE PTR [edx]
+  36:	00 01                	add    BYTE PTR [ecx],al
+  38:	01                   	.byte 0x1

@@ -1,0 +1,72 @@
+﻿Input
+Store number
+
+Skipcond 400	/if number == 0
+Jump main_cond
+Load digits		/AC = '0'
+Output
+Halt
+
+main_cond,		Load number
+			Skipcond 400
+            	Jump main_while_1
+            	Halt
+            
+main_while_1,	Load number
+			Store x
+            	Jump divide
+                
+main_while_2,	Load result
+            	Store number
+            	Load digits_ptr
+            	Add x
+            	Store digits_idx
+            	Clear
+            	AddI digits_idx
+            	Output
+            	Jump main_cond
+
+number,		DEC	0
+digits,		HEX	30	/0
+			HEX 31	/1
+            HEX 32	/2
+            HEX 33	/3
+            HEX 34	/4
+            HEX 35	/5
+            HEX 36	/6
+            HEX 37	/7
+            HEX 38	/8
+            HEX 39	/9
+            HEX 41	/A
+            HEX 42	/B
+            HEX 43	/C
+            HEX 44	/D
+            HEX 45	/E
+            HEX 46	/F
+
+digits_ptr,	HEX 018	/adress of digits
+digits_idx,	HEX 000
+
+/MODULO DIVISION
+divide,	Clear
+		Store result
+
+cond,		Load x
+		Subt y
+      	Skipcond 000
+      	Jump while
+      	Jump main_while_2
+
+while,	Load x
+		Subt y
+       	Store x
+        	Load result
+        	Add ONE
+        	Store result
+        	Jump cond
+        	Jump while
+        
+x,		DEC 0
+y,		DEC	16
+result,	DEC 0
+ONE, 		DEC 1

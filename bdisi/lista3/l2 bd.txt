@@ -1,0 +1,203 @@
+1.
+CREATE DATABASE `db-aparaty`;
+
+CREATE USER '268417'@'localhost'; SET PASSWORD FOR '268417'@'localhost'=PASSWORD('Mikolaj417');
+
+GRANT SELECT, INSERT, UPDATE ON `db-aparaty`.* TO '268417'@'localhost'; FLUSH PRIVILEGES;
+
+2.
+CREATE TABLE Producent (
+	ID int unsigned NOT NULL AUTO_INCREMENT,
+	nazwa varchar(50),
+    	kraj varchar(20),
+    	PRIMARY KEY (ID) );
+
+CREATE TABLE Obiektyw (
+    	ID int unsigned NOT NULL AUTO_INCREMENT,
+    	model varchar(30) NOT NULL,
+    	minPrzeslona float unsigned NOT NULL,
+    	maxPrzeslona float unsigned NOT NULL,
+    	PRIMARY KEY (ID),
+    	CHECK (minPrzeslona < maxPrzeslona) );
+
+CREATE TABLE Matryca (
+    	ID int unsigned NOT NULL AUTO_INCREMENT,
+   	przekatna decimal(4,2) unsigned NOT NULL,
+    	rozdzielczosc decimal(3,1) unsigned NOT NULL,
+    	typ varchar(10) NOT NULL,
+    	PRIMARY KEY (ID) );
+ALTER TABLE Matryca AUTO_INCREMENT=100;
+
+CREATE TABLE Aparat (
+    	model varchar(30) NOT NULL,
+    	producent int unsigned NOT NULL,
+   	matryca int unsigned NOT NULL,
+    	obiektyw int unsigned NOT NULL,
+    	typ enum ('kompaktowy', 'lustrzanka', 'profesjonalny', 'inny') NOT NULL,
+    	PRIMARY KEY (model),
+    	FOREIGN KEY (producent) REFERENCES Producent(ID),
+    	FOREIGN KEY (matryca) REFERENCES Matryca(ID),
+    	FOREIGN KEY (obiektyw) REFERENCES Obiektyw(ID) );
+
+3.
+mysql -u 268417 -p
+
+INSERT INTO Matryca (przekatna, rozdzielczosc, typ) VALUES (12.34, 56.78, 'kompaktowy');
+i 14 kolejnych rekordów
+Po wprowadzeniu wartości ujemnej pokazuje się komunikat błędu o wyjściu poza zakres.
+
+INSERT INTO Obiektyw (model, minPrzeslona, maxPrzeslona) VALUES ('m1', 0.88, 0.99);
+i 14 kolejnych rekordów
+Po wprowadzeniu minPrzeslona >= maxPrzeslona wyświetla się komunikat błędu o braku spełnienia zdefiniowanego warunku.
+
+INSERT INTO Producent (nazwa, kraj) VALUES ('Kanon', 'Chiny');
+i 14 kolejnych rekordów
+
+4.
+DELIMITER $$
+CREATE PROCEDURE IF NOT EXISTS wypelnijAparat ()
+BEGIN
+
+DECLARE i int;
+DECLARE mat int;
+DECLARE ob int;
+DECLARE prod int;
+DECLARE t int;
+DECLARE model_id int;
+
+SET i = 1;
+WHILE i <= 100 DO
+	SELECT ID INTO mat FROM Matryca ORDER BY RAND() LIMIT 1;
+	SELECT ID INTO ob FROM Obiektyw ORDER BY RAND() LIMIT 1;
+	SELECT ID INTO prod FROM Producent ORDER BY RAND() LIMIT 1;
+
+	SET t = ROUND(RAND() * 3 + 1);
+
+	SELECT COUNT(*) INTO model_id FROM Aparat;
+
+	INSERT INTO Aparat (model, producent, matryca, obiektyw, typ)
+		VALUES (CONCAT('aparat', model_id + 1), prod, mat, ob, t);
+	
+	SET i = i + 1;
+END WHILE;
+
+END$$
+DELIMITER ;
+
+CALL wypelnijAparat();
+
+Żaden z modeli się nie powtarza, gdyż nazwy są unikatowe.
+Użytkownik z zadania 1 nie może stworzyć ani uruchomić procedury, bo nie ma do tego uprawnień.
+
+5.
+DELIMITER $$
+CREATE FUNCTION IF NOT EXISTS znajdzProducenta(idProd int) RETURNS varchar(30)
+BEGIN
+
+DECLARE wynik varchar(30);
+SELECT a.model INTO wynik FROM Aparat a JOIN Producent p ON p.ID = a.producent JOIN Matryca m ON m.ID = a.matryca WHERE p.ID = idProd ORDER BY m.przekatna LIMIT 1;
+RETURN wynik;
+
+END$$
+DELIMITER ;
+
+6.
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS dodajProducenta BEFORE INSERT ON Aparat FOR EACH ROW
+BEGIN
+
+IF (SELECT COUNT(*) FROM Producent WHERE ID = NEW.producent) = 0
+THEN
+	INSERT INTO Producent (ID) VALUE (NEW.producent);
+END IF;
+
+END$$
+DELIMITER ;
+
+7.
+DELIMITER $$
+CREATE FUNCTION IF NOT EXISTS aparatyZMatryca(idMat int) RETURNS int
+BEGIN
+
+DECLARE wynik int;
+SELECT COUNT(*) INTO wynik FROM Aparat WHERE matryca = idMat;
+RETURN wynik;
+
+END$$
+DELIMITER ;
+
+8.
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS usunMatryce AFTER DELETE ON Aparat FOR EACH ROW
+BEGIN
+
+IF (SELECT COUNT(*) FROM Aparat WHERE matryca = OLD.matryca) = 0
+THEN
+	DELETE FROM Matryca WHERE ID = OLD.matryca;
+END IF;
+
+END$$
+DELIMITER ;
+
+
+9.
+CREATE VIEW IF NOT EXISTS aparatySpozaChin AS
+SELECT a.model, p.nazwa, m.przekatna, m.rozdzielczosc, o.minPrzeslona, o.maxPrzeslona FROM Aparat a
+	JOIN Producent p ON p.ID = a.producent
+	JOIN Matryca m ON m.ID = a.matryca
+	JOIN Obiektyw o WHERE o.ID = a.obiektyw;
+
+Zadania nie może wykonać użytkownić z zadania 1., ponieważ nie ma uprawnień do tworzenia widoków.
+
+10.
+CREATE VIEW IF NOT EXISTS aparatyWidok AS
+SELECT p.nazwa, p.kraj, a.model FROM Aparat a
+	JOIN Producent p ON p.ID = a.producent;
+
+DELETE FROM Aparat WHERE producent IN (SELECT ID FROM Producent WHERE kraj = "Chiny");
+
+Po ponownym wywołaniu select'a widoku wszystkie aparaty z producentami z Chin zniknęły.
+
+11.
+ALTER TABLE Producent ADD COLUMN liczbaModeli int unsigned NOT NULL;
+
+UPDATE Producent SET liczbaModeli = (SELECT COUNT(*) FROM Aparat WHERE Aparat.producent = Producent.ID);
+
+
+
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS liczbaAparatowDelete AFTER DELETE ON Aparat FOR EACH ROW
+BEGIN
+
+UPDATE Producent SET liczbaModeli = (SELECT COUNT(*) FROM Aparat WHERE Aparat.producent = Producent.ID) WHERE ID = OLD.producent;
+
+END$$
+DELIMITER ;
+
+
+
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS liczbaAparatowInsert AFTER INSERT ON Aparat FOR EACH ROW
+BEGIN
+
+UPDATE Producent SET liczbaModeli = (SELECT COUNT(*) FROM Aparat WHERE Aparat.producent = Producent.ID) WHERE ID = NEW.producent;
+
+END$$
+DELIMITER ;
+
+
+
+DELIMITER $$
+CREATE TRIGGER IF NOT EXISTS liczbaAparatowUpdate AFTER UPDATE ON Aparat FOR EACH ROW
+BEGIN
+
+UPDATE Producent SET liczbaModeli = (SELECT COUNT(*) FROM Aparat WHERE Aparat.producent = Producent.ID) WHERE ID = OLD.producent OR ID = NEW.producent;
+
+END$$
+DELIMITER ;
+
+
+
+Trigger nie może zostać utworzony przez użytkownika z zadania 1., jednak będzie on działał dla operacji wykonywanych przez niego na tabeli Aparat, gdyż trigerry są tworzone na tabelę, a nie na użytkownika.
+
+
