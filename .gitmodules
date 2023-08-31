@@ -1,3 +1,6 @@
+[submodule "tp/Checkers"]
+    path = tp/Checkers
+    url = https://github.com/karoljanic/Checkers.git
 [submodule "Checkers"]
-  path = Checkers
-  url = https://github.com/karoljanic/Checkers.git
+	path = Checkers
+	url = https://github.com/karoljanic/Checkers.git
